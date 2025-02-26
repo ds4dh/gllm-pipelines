@@ -12,29 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Supervised fine-tuning script for decoder language models.
-
-Usage:
-
-# One 1 node of 8 x H100s
-accelerate launch --config_file=recipes/accelerate_configs/zero3.yaml src/open_r1/sft.py \
-    --model_name_or_path Qwen/Qwen2.5-1.5B-Instruct \
-    --dataset_name HuggingFaceH4/Bespoke-Stratos-17k \
-    --learning_rate 2.0e-5 \
-    --num_train_epochs 1 \
-    --packing \
-    --max_seq_length 4096 \
-    --per_device_train_batch_size 2 \
-    --gradient_accumulation_steps 8 \
-    --gradient_checkpointing \
-    --bf16 \
-    --logging_steps 5 \
-    --eval_strategy steps \
-    --eval_steps 100 \
-    --output_dir data/Qwen2.5-1.5B-Open-R1-Distill
-"""
-
 import logging
 import os
 import sys
@@ -46,14 +23,21 @@ from datasets import load_dataset
 from transformers import AutoTokenizer, set_seed
 from transformers.trainer_utils import get_last_checkpoint
 
-from open_r1.configs import SFTConfig
-from open_r1.utils.callbacks import get_callbacks
-from open_r1.utils.wandb_logging import init_wandb_training
+try:
+    from open_r1.configs import SFTConfig
+    from open_r1.utils.callbacks import get_callbacks
+    from open_r1.utils.wandb_logging import init_wandb_training
+except ImportError:
+    from configs import SFTConfig
+    from utils.callbacks import get_callbacks
+    from utils.wandb_logging import init_wandb_training
+
 from trl import (
     ModelConfig,
     ScriptArguments,
     SFTTrainer,
     TrlParser,
+    DataCollatorForCompletionOnlyLM,
     get_kbit_device_map,
     get_peft_config,
     get_quantization_config,
@@ -101,19 +85,29 @@ def main(script_args, training_args, model_args):
     if "wandb" in training_args.report_to:
         init_wandb_training(training_args)
 
-    ################
+    ###############
     # Load datasets
-    ################
+    ###############
     dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
 
     ################
     # Load tokenizer
     ################
     tokenizer = AutoTokenizer.from_pretrained(
-        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True
+        model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True,
     )
+    if os.environ["chat_template"] is not None:
+        tokenizer.chat_template = os.environ["chat_template"]
+    else:
+        assert hasattr(tokenizer, "chat_template"), (
+            "Tokenizer must have a chat_template attribute "
+            "or chat_template must be set in the env config"
+        )
     tokenizer.pad_token = tokenizer.eos_token
-
+    token_sequence_for_completion_start = os.environ["token_sequence_for_completion_start"]
+    response_template_ids = tokenizer.encode(token_sequence_for_completion_start, add_special_tokens=False)
+    collator = DataCollatorForCompletionOnlyLM(response_template_ids, tokenizer=tokenizer)
+        
     ###################
     # Model init kwargs
     ###################
@@ -142,10 +136,11 @@ def main(script_args, training_args, model_args):
         train_dataset=dataset[script_args.dataset_train_split],
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         processing_class=tokenizer,
+        data_collator=collator,
         peft_config=get_peft_config(model_args),
         callbacks=get_callbacks(training_args, model_args),
     )
-
+    
     ###############
     # Training loop
     ###############
@@ -190,12 +185,12 @@ def main(script_args, training_args, model_args):
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
-    #############
-    # push to hub
-    #############
-    if training_args.push_to_hub:
-        logger.info("Pushing to hub...")
-        trainer.push_to_hub(**kwargs)
+    # #############
+    # # Push to hub
+    # #############
+    # if training_args.push_to_hub:
+    #     logger.info("Pushing to hub...")
+    #     trainer.push_to_hub(**kwargs)
 
 
 if __name__ == "__main__":

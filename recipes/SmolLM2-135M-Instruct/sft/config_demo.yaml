@@ -1,0 +1,69 @@
+# Defined by user
+# TODO: MODIFY THE SLURM SCRIPT FOR EASY USAGE WITH OUR PERSONAL CONFIGS
+env:
+  chat_template: null
+  token_sequence_for_completion_start: "<|begin_of_thought|>"
+
+# Data training arguments
+# TODO: change the dataset_name to a path to a local Dataset
+dataset_name: HuggingFaceH4/Bespoke-Stratos-17k
+dataset_configs:
+- all
+preprocessing_num_workers: 8
+
+# Model arguments
+model_name_or_path: HuggingFaceTB/SmolLM2-135M-Instruct
+model_revision: main
+torch_dtype: bfloat16
+trust_remote_code: False
+attn_implementation: flash_attention_2
+
+# LoRA configuration
+use_peft: True
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.1
+lora_target_modules: all-linear
+lora_modules_to_save: null
+lora_task_type: CAUSAL_LM
+
+# Quantization configuration
+load_in_4bit: true
+load_in_8bit: false
+use_bnb_nested_quant: true  # this is double quantization
+bnb_4bit_quant_type: nf4
+
+# SFT trainer config
+bf16: true
+do_eval: true
+eval_strategy: steps
+eval_steps: 3
+save_strategy: steps
+save_steps: 3
+save_total_limit: 1
+load_best_model_at_end: false
+metric_for_best_model: loss
+gradient_accumulation_steps: 8
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+hub_model_id: SmolLM2-135M-R1-Distill
+hub_strategy: every_save
+learning_rate: 2.0e-05
+log_level: info
+logging_steps: 5
+logging_strategy: steps
+lr_scheduler_type: cosine
+packing: false  # false because for now we do completion_only mode (but would work with true if not)
+max_seq_length: 4096
+max_steps: -1
+num_train_epochs: 1
+output_dir: data/SmolLM-135M-R1-Distill
+overwrite_output_dir: true
+per_device_eval_batch_size: 2
+per_device_train_batch_size: 2
+push_to_hub: true
+report_to:
+- wandb
+seed: 42
+warmup_ratio: 0.1
