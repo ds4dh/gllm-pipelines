@@ -89,14 +89,15 @@ def main(script_args, training_args, model_args):
     # Load datasets
     ###############
     dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-
+    # dataset["validation"] = dataset["validation"].select(range(5))  # DEBUG
+    
     ################
     # Load tokenizer
     ################
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path, trust_remote_code=model_args.trust_remote_code, use_fast=True,
     )
-    if os.environ["chat_template"] is not None:
+    if eval(os.environ["chat_template"]) is not None:
         tokenizer.chat_template = os.environ["chat_template"]
     else:
         assert hasattr(tokenizer, "chat_template"), (
@@ -107,7 +108,7 @@ def main(script_args, training_args, model_args):
     token_sequence_for_completion_start = os.environ["token_sequence_for_completion_start"]
     response_template_ids = tokenizer.encode(token_sequence_for_completion_start, add_special_tokens=False)
     collator = DataCollatorForCompletionOnlyLM(response_template_ids, tokenizer=tokenizer)
-        
+    
     ###################
     # Model init kwargs
     ###################
@@ -178,6 +179,7 @@ def main(script_args, training_args, model_args):
     ##########
     # Evaluate
     ##########
+    # TODO: CHECK SI ON ENLEVE CA
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
         metrics = trainer.evaluate()

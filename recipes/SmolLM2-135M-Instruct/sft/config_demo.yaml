@@ -6,7 +6,9 @@ env:
 
 # Data training arguments
 # TODO: change the dataset_name to a path to a local Dataset
-dataset_name: HuggingFaceH4/Bespoke-Stratos-17k
+dataset_name: anthonyyazdaniml/Bespoke-Stratos-17k-with-val
+dataset_train_split: train
+dataset_test_split: validation
 dataset_configs:
 - all
 preprocessing_num_workers: 8
@@ -15,11 +17,11 @@ preprocessing_num_workers: 8
 model_name_or_path: HuggingFaceTB/SmolLM2-135M-Instruct
 model_revision: main
 torch_dtype: bfloat16
-trust_remote_code: False
+trust_remote_code: false
 attn_implementation: flash_attention_2
 
 # LoRA configuration
-use_peft: True
+use_peft: true
 lora_r: 8
 lora_alpha: 16
 lora_dropout: 0.1

@@ -251,12 +251,12 @@ def main(script_args, training_args, model_args):
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
-    #############
-    # push to hub
-    #############
-    if training_args.push_to_hub:
-        logger.info("Pushing to hub...")
-        trainer.push_to_hub(**kwargs)
+    # #############
+    # # push to hub
+    # #############
+    # if training_args.push_to_hub:
+    #     logger.info("Pushing to hub...")
+    #     trainer.push_to_hub(**kwargs)
 
 
 if __name__ == "__main__":
