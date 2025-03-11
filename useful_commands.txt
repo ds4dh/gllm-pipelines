@@ -1,0 +1,5 @@
+# SFT
+export PYTHONPATH=./src:$PYTHONPATH && accelerate launch --config_file recipes/accelerate_configs/ddp.yaml src/open_r1/sft.py --config recipes/SmolLM2-135M-Instruct/sft/config_demo.yaml
+
+# GRPO
+export PYTHONPATH=./src:$PYTHONPATH && accelerate launch --config_file recipes/accelerate_configs/ddp.yaml src/open_r1/grpo.py --config recipes/SmolLM2-135M-Instruct/grpo/config_demo.yaml
